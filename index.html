@@ -17,6 +17,9 @@
 @media(max-width:360px){.header-inner{padding:13px 14px}.save-indicator{display:none}.page{padding-left:10px;padding-right:10px}h1{font-size:21px}.version-pill{display:none}.mode{padding-left:8px;padding-right:8px}.board{padding-left:10px;padding-right:10px}.board-footer{margin-left:-10px;margin-right:-10px;padding-left:10px;padding-right:10px}.cards{gap:5px}.playing-card .card-rank{font-size:15px}.playing-card .card-suit{font-size:22px}}
 @media(prefers-reduced-motion:reduce){*{transition:none!important}}
 
+/* Three-state tap legend replaces the input-mode switch. */
+.tap-sequence{display:flex;align-items:center;gap:7px;min-height:43px}.tap-step{padding:7px 9px;border:1px solid #dfe3d8;border-radius:6px;font-size:11px;white-space:nowrap;background:#fffefa}.discard-step{background:#e9ebe4;color:#77816f}.keep-step{background:#edf5e2;border-color:#b9d4a9;color:#477040}.tap-arrow{font-size:11px;color:#8b9483}@media(max-width:760px){.tap-sequence{gap:4px;min-height:39px}.tap-step{font-size:9px;padding:6px}.tap-arrow{font-size:9px}}@media(max-width:360px){.tap-sequence{gap:3px}.tap-step{padding:5px;font-size:8px}}
+
 </style>
 </head>
 <body>
@@ -30,12 +33,12 @@
       <div class="board-column">
         <section class="board panel" aria-label="52枚のカード一覧">
           <div class="board-toolbar">
-            <div class="mode-group" role="group" aria-label="カードの入力モード"><button id="seenMode" class="mode active" aria-pressed="true"><span class="mode-dot seen-dot"></span>見たカード</button><button id="keepMode" class="mode" aria-pressed="false"><span class="mode-dot keep-dot"></span>残すカード</button></div>
+            <div class="tap-sequence" aria-label="タップする順に、捨てる、残す、未選択"><span class="tap-step discard-step">① 捨てる</span><span class="tap-arrow" aria-hidden="true">→</span><span class="tap-step keep-step">② 残す</span><span class="tap-arrow" aria-hidden="true">→</span><span class="tap-step">③ 未選択</span></div>
             <div class="color-group" role="group" aria-label="スートの配色"><button id="fourColor" class="color-choice active" aria-pressed="true">4色</button><button id="twoColor" class="color-choice" aria-pressed="false">2色</button></div>
           </div>
-          <div class="board-hint"><p id="modeHint">タップでグレーに。もう一度タップすると戻ります。</p><button id="undoButton" class="text-button" disabled><span aria-hidden="true">↶</span> 戻す</button></div>
+          <div class="board-hint"><p>タップするたびに切り替わります。残すカードは4枚まで。</p><button id="undoButton" class="text-button" disabled><span aria-hidden="true">↶</span> 戻す</button></div>
           <div id="cardBoard"></div>
-          <div class="board-footer"><div class="legend"><span><i class="legend-card"></i>未確認</span><span><i class="legend-card is-seen"></i>見た</span><span><i class="legend-card is-kept"></i>残す</span></div><button class="text-button" id="exampleButton">入力例を試す <span aria-hidden="true">↗</span></button></div>
+          <div class="board-footer"><div class="legend"><span><i class="legend-card"></i>未選択</span><span><i class="legend-card is-seen"></i>捨てる</span><span><i class="legend-card is-kept"></i>残す</span></div><button class="text-button" id="exampleButton">入力例を試す <span aria-hidden="true">↗</span></button></div>
         </section>
         <div class="sub-controls"><p>入力内容は、このブラウザに保存されます。</p><button class="text-button" id="reshuffleButton">山札を再シャッフルした</button></div>
         <div class="reshuffle-notice" id="reshuffleNotice" hidden>再シャッフル前の既出カードを解除しました。戻るカードの範囲を特定できないため、このハンドの確率計算は停止しています。カードの記録は続けられます。</div>
@@ -43,7 +46,7 @@
       <aside class="sidebar" aria-label="カウントと完成確率">
         <section class="count-panel"><div class="section-label">CARD COUNT</div><div class="main-count"><div><span class="count-title" id="unknownTitle">未確認カード</span><div class="big-count"><span id="unknownCount">52</span><span>/ 52</span></div></div><div class="count-ring"><span id="seenTotal">0</span><small>記録済み</small></div></div><div class="suit-counts" id="suitCounts"></div><p class="count-note">相手の手札なども含む枚数です。実際の山札の残り枚数ではありません。</p></section>
         <section class="odds-panel panel"><div class="section-heading"><h2>完成候補を確認</h2><span class="mini-label">OPTIONAL</span></div><p class="odds-intro">「残すカード」を指定すると計算します。</p><div class="kept-slots" id="keptSlots"></div><div id="oddsContent"></div><div class="target-control"><label for="targetSelect">目標の強さ</label><select id="targetSelect"><option value="4">4ハイ以下</option><option value="5">5ハイ以下</option><option value="6">6ハイ以下</option><option value="7">7ハイ以下</option><option value="8" selected>8ハイ以下</option><option value="9">9ハイ以下</option><option value="10">10ハイ以下</option><option value="11">Jハイ以下</option><option value="12">Qハイ以下</option><option value="13">Kハイ以下</option></select></div><div id="targetResult" class="target-result"></div>
-          <details class="calculation-help"><summary>計算の前提・使い方</summary><div><ol><li>交換するカード・自分の捨て札を「見たカード」で記録。</li><li>残す1〜4枚を「残すカード」で指定。</li><li>交換したら、古い手札を「見たカード」に変更し、新しく残すカードを指定。</li></ol><p>未確認カードのどれも同じ確率で引くと仮定し、次の1回の交換で4枚のバドゥーギが完成する組合せを数えます。相手の手札・交換傾向やバーンカードによる偏りは推定しません。</p><p>完成確率は勝率ではありません。残すカードの数字・スートに重複がある場合、4枚のバドゥーギは完成しません。Aは最小、ストレートは無視します。</p><p>捨て札は再シャッフルまで除外します。再シャッフル後は計算を停止します。</p><a href="https://www.pokerstars.com/poker/games/badugi/" target="_blank" rel="noreferrer">バドゥーギのルール ↗</a></div></details>
+          <details class="calculation-help"><summary>計算の前提・使い方</summary><div><ol><li>1回タップすると「捨てるカード」（グレー）になります。交換するカード・捨て札を記録してください。</li><li>もう1回タップすると「残すカード」（緑枠）になります。残すカードは1〜4枚です。</li><li>さらにタップすると「未選択」に戻ります。交換後に残すカードを捨て札へ変える場合は、2回タップしてください。</li></ol><p>未確認カードのどれも同じ確率で引くと仮定し、次の1回の交換で4枚のバドゥーギが完成する組合せを数えます。相手の手札・交換傾向やバーンカードによる偏りは推定しません。</p><p>完成確率は勝率ではありません。残すカードの数字・スートに重複がある場合、4枚のバドゥーギは完成しません。Aは最小、ストレートは無視します。</p><p>捨て札は再シャッフルまで除外します。再シャッフル後は計算を停止します。</p><a href="https://www.pokerstars.com/poker/games/badugi/" target="_blank" rel="noreferrer">バドゥーギのルール ↗</a></div></details>
         </section>
       </aside>
     </div>
@@ -106,14 +109,14 @@ function calculate(kept, seen) {
 }
 
 const KEY = 'badugi-counter-v1';
-const blank = () => ({ kept: [], seen: [], mode: 'seen', colors: 4, target: 8, reshuffled: false, archived: [] });
+const blank = () => ({ kept: [], seen: [], colors: 4, target: 8, reshuffled: false, archived: [] });
 let state = blank();
 try {
   const data = JSON.parse(localStorage.getItem(KEY));
   if (data && Array.isArray(data.kept) && Array.isArray(data.seen)) {
     const clean = ids => [...new Set(ids.filter(id => Number.isInteger(id) && id >= 0 && id < 52))];
     const kept = clean(data.kept).slice(0, 4);
-    state = { ...blank(), kept, seen: clean(data.seen).filter(id => !kept.includes(id)), mode: data.mode === 'keep' ? 'keep' : 'seen', colors: data.colors === 2 ? 2 : 4, target: Number.isInteger(data.target) && data.target >= 4 && data.target <= 13 ? data.target : 8, reshuffled: data.reshuffled === true, archived: Array.isArray(data.archived) ? clean(data.archived) : [] };
+    state = { ...blank(), kept, seen: clean(data.seen).filter(id => !kept.includes(id)), colors: data.colors === 2 ? 2 : 4, target: Number.isInteger(data.target) && data.target >= 4 && data.target <= 13 ? data.target : 8, reshuffled: data.reshuffled === true, archived: Array.isArray(data.archived) ? clean(data.archived) : [] };
   }
 } catch {}
 const undoStack = [];
@@ -149,8 +152,6 @@ $('confirmDialog').addEventListener('close', () => {
   if ($('confirmDialog').returnValue === 'confirm' && dialogAction) dialogAction();
   dialogAction = null;
 });
-$('seenMode').addEventListener('click', () => { state.mode = 'seen'; save(); render(); });
-$('keepMode').addEventListener('click', () => { state.mode = 'keep'; save(); render(); });
 $('fourColor').addEventListener('click', () => { state.colors = 4; save(); render(); });
 $('twoColor').addEventListener('click', () => { state.colors = 2; save(); render(); });
 $('targetSelect').addEventListener('change', event => { state.target = Number(event.target.value); save(); render(); });
@@ -178,14 +179,15 @@ $('reshuffleButton').addEventListener('click', () => {
   }));
 });
 function toggleCard(id) {
-  if (state.mode === 'keep' && !state.kept.includes(id) && state.kept.length >= 4) return toast('残すカードは4枚までです');
+  if (state.seen.includes(id) && state.kept.length >= 4) return toast('残すカードは4枚までです。残すカードを1枚解除してください');
   change(() => {
-    if (state.mode === 'keep') {
-      if (state.kept.includes(id)) state.kept = state.kept.filter(c => c !== id);
-      else { state.seen = state.seen.filter(c => c !== id); state.kept.push(id); }
+    if (state.kept.includes(id)) {
+      state.kept = state.kept.filter(c => c !== id);
+    } else if (state.seen.includes(id)) {
+      state.seen = state.seen.filter(c => c !== id);
+      state.kept.push(id);
     } else {
-      if (state.seen.includes(id)) state.seen = state.seen.filter(c => c !== id);
-      else { state.kept = state.kept.filter(c => c !== id); state.seen.push(id); }
+      state.seen.push(id);
     }
   });
 }
@@ -201,17 +203,17 @@ function buildBoard() {
 }
 function render() {
   document.body.classList.toggle('two-color', state.colors === 2);
-  for (const [id, active] of [['seenMode', state.mode === 'seen'], ['keepMode', state.mode === 'keep'], ['fourColor', state.colors === 4], ['twoColor', state.colors === 2]]) {
+  for (const [id, active] of [['fourColor', state.colors === 4], ['twoColor', state.colors === 2]]) {
     $(id).classList.toggle('active', active); $(id).setAttribute('aria-pressed', String(active));
   }
-  $('modeHint').textContent = state.mode === 'seen' ? 'タップでグレーに。もう一度タップすると戻ります。' : '残すカードをタップ（最大4枚）。緑の枠が付きます。';
   const excluded = new Set([...state.kept, ...state.seen]);
   for (let id = 0; id < 52; id++) {
     const element = $(`card-${id}`);
     const kept = state.kept.includes(id), seen = state.seen.includes(id);
     element.classList.toggle('is-kept', kept); element.classList.toggle('is-seen', seen);
-    element.setAttribute('aria-label', `${SUITS[suit(id)].name}の${rankLabel(rank(id))}：${kept ? '残すカード' : seen ? '見たカード' : '未確認'}`);
-    element.setAttribute('aria-pressed', String(state.mode === 'keep' ? kept : seen));
+    element.setAttribute('aria-label', `${SUITS[suit(id)].name}の${rankLabel(rank(id))}：${kept ? '残すカード' : seen ? '捨てるカード' : '未選択'}`);
+    element.setAttribute('aria-pressed', String(kept || seen));
+    element.title = kept ? '次のタップ：未選択に戻す' : seen ? '次のタップ：残すカードにする' : '次のタップ：捨てるカードにする';
   }
   $('unknownCount').textContent = String(52 - excluded.size);
   $('unknownTitle').textContent = state.reshuffled ? '再シャッフル後の未記録' : '未確認カード';
@@ -224,7 +226,7 @@ function render() {
   $('keptSlots').innerHTML = Array.from({length:4}, (_, i) => {
     const id = state.kept[i];
     if (id === undefined) return '<span class="kept-slot" aria-hidden="true">＋</span>';
-    return `<button class="kept-slot filled ${SUITS[suit(id)].key}" data-remove="${id}" title="${cardLabel(id)}を見たカードへ移動" aria-label="${cardLabel(id)}を見たカードへ移動">${rankLabel(rank(id))}<small aria-hidden="true">${SUITS[suit(id)].symbol}</small></button>`;
+    return `<button class="kept-slot filled ${SUITS[suit(id)].key}" data-remove="${id}" title="${cardLabel(id)}を未選択に戻す" aria-label="${cardLabel(id)}を未選択に戻す">${rankLabel(rank(id))}<small aria-hidden="true">${SUITS[suit(id)].symbol}</small></button>`;
   }).join('');
   $('targetSelect').value = String(state.target);
   $('undoButton').disabled = undoStack.length === 0;
@@ -234,9 +236,9 @@ function render() {
 }
 $('keptSlots').addEventListener('click', event => {
   const button = event.target.closest('[data-remove]');
-  if (!button) { state.mode = 'keep'; save(); render(); return; }
+  if (!button) return;
   const id = Number(button.dataset.remove);
-  change(() => { state.kept = state.kept.filter(c => c !== id); state.seen.push(id); });
+  toggleCard(id);
 });
 function renderOdds() {
   $('targetSelect').disabled = state.reshuffled || !state.kept.length;
